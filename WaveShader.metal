@@ -2,58 +2,112 @@
 #include <SwiftUI/SwiftUI_Metal.h>
 using namespace metal;
 
-// Enhanced wave transition with ripple effect
+// Helper noise function for more organic water feel
+float hash12(float2 p) {
+    float3 p3  = fract(float3(p.xyx) * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+float noise(float2 p) {
+    float2 i = floor(p);
+    float2 f = fract(p);
+    float2 u = f*f*(3.0-2.0*f);
+    return mix( mix( hash12(i + float2(0.0,0.0)),
+                     hash12(i + float2(1.0,0.0)), u.x),
+                mix( hash12(i + float2(0.0,1.0)),
+                     hash12(i + float2(1.0,1.0)), u.x), u.y);
+}
+
+// Enhanced wave transition with ripple effect based on mask edges
 [[ stitchable ]] half4 waveTransition(
     float2 position,
     SwiftUI::Layer layer,
-    float2 touchPos,
-    float waveRadius,
     float time,
-    float amplitude,
-    float frequency,
-    float decay,
     float speed
 ) {
-    // Calculate distance from touch point
-    float distance = length(position - touchPos);
+    // 1. Sample current alpha to determine "water" area vs "land"
+    // Since we blur the mask heavily in SwiftUI, alpha gives us a 0..1 gradient
+    // 1.0 = deep water, 0.0 = bone dry, 0.5 = shoreline
+    half4 originalColor = layer.sample(position);
+    float alpha = originalColor.a;
+
+    // Optimization: if no water nearby, return early
+    if (alpha <= 0.001) {
+        return originalColor;
+    }
     
-    // How long it takes for ripple to reach this pixel
-    float delay = distance / speed;
+    // 2. Simulate Expansion
+    // "Dilate" the water: we map a lower alpha (e.g. 0.2) to full visibility (1.0)
+    // effectively pushing the boundary outwards.
+    // Use 'smoothstep' to create a new, harder edge from the soft blur
+    // 'expansion' can be time-based if we tracked stroke time, but for now we just make the river "wide"
+    float expandedAlpha = smoothstep(0.1, 0.9, alpha);
     
-    // Adjust time for delay
-    float localTime = time - delay;
-    localTime = max(0.0, localTime);
+    // 3. Gentle Outward Ripples
+    // We want waves travelling from High Alpha (center) to Low Alpha (edge).
+    // The "distance" metric is (1.0 - alpha).
+    // Wave equation: sin(Distance * Freq - Time * Speed)
+    // Slower speed for realism.
     
-    // Ripple effect: sine wave with exponential decay
-    float rippleAmount = amplitude * sin(frequency * localTime) * exp(-decay * localTime);
+    float waveDist = 1.0 - alpha; // 0 at center, 1 at edge
+    float rippleFreq = 15.0; // How many ripples
+    float rippleSpeed = 1.5; // SLOW movement for viscous water
     
-    // Direction vector from touch point
-    float2 direction = normalize(position - touchPos);
+    // Add some noise to the wave phase so it's not perfect rings
+    float noiseVal = noise(position * 0.01);
     
-    // Calculate displaced position for sampling
-    float2 samplePosition = position + rippleAmount * direction;
+    float ripplePhase = waveDist * rippleFreq - time * rippleSpeed + noiseVal * 2.0;
+    float rippleHeight = sin(ripplePhase);
     
-    // Smooth edge for the reveal circle
-    float edgeWidth = 40.0;
-    float alpha = smoothstep(waveRadius - edgeWidth, waveRadius + edgeWidth, distance);
+    // 4. Calculate Distortion
+    // Calculate normal based on alpha gradient (downhill flow)
+    float2 pixelSize = float2(1.0, 1.0);
+    float offset = 2.0;
+    float alphaL = layer.sample(position - float2(offset, 0)).a;
+    float alphaR = layer.sample(position + float2(offset, 0)).a;
+    float alphaT = layer.sample(position - float2(0, offset)).a;
+    float alphaB = layer.sample(position + float2(0, offset)).a;
     
-    // Add ripple to the alpha mask
-    alpha += rippleAmount * 0.02;
-    alpha = saturate(alpha);
+    float2 gradient = float2(alphaR - alphaL, alphaB - alphaT);
+    float2 normal = (length(gradient) > 0.001) ? normalize(gradient) : float2(0, 0);
     
-    // Sample the layer at displaced position
-    half4 color = layer.sample(samplePosition);
+    // Distort mostly near the "shore" (lower original alpha)
+    // Strength fades in deep water
+    float distortionStrength = 15.0 * (1.0 - alpha) * expandedAlpha; 
     
-    // Apply alpha mask (inside wave = transparent, outside = opaque)
-    color.a *= half(alpha);
+    float2 distortedPosition = position + normal * rippleHeight * distortionStrength;
     
-    // Add highlight at wave front (based on distance from wave edge)
-    float edgeDistance = abs(distance - waveRadius);
-    float highlight = exp(-edgeDistance / 20.0) * 0.5;
+    half4 disColor = layer.sample(distortedPosition);
     
-    // Brighten/darken based on ripple amount
-    color.rgb += half3(rippleAmount / amplitude * 0.3) * color.a;
-    color.rgb += half3(highlight) * (1.0 - alpha);
+    // 5. Specular Highlights
+    // Simple top-left lighting
+    float2 lightDir = normalize(float2(-1, -1));
     
-    return color;
+    // Calculate normal perturbation from ripple
+    // slope = derivative of sin(phase) = cos(phase) * d(phase)/dx
+    // We approximated d(phase)/dx as just direction * freq, so slope ~ cos.
+    
+    float slope = cos(ripplePhase); 
+    
+    // Combine surface normal with ripple slope
+    // Ideally we would rotate the normal, but just adding slope to dot product approximation works well for fake water
+    float specular = max(0.0, dot(normal, lightDir) + slope * 0.5);
+    specular = pow(specular, 4.0);
+    
+    // 6. Final Alpha Composition
+    // We return the Expanded Alpha for the clipping mask, so the water appears wider than the brush
+    disColor.a = expandedAlpha;
+    
+    // Add specular glints
+    disColor.rgb += half3(specular * 0.6 * expandedAlpha);
+    
+    // Verify alpha pre-multiplication if needed, but usually .mask handles it.
+    // Since we are returning color from a .layerEffect, we are modifying the pixel.
+    // If we want to Expand the visible area, we need to modify Alpha.
+    
+    return disColor;
 }
+
+// Helper to avoid undefined function in loop
+// We can just inline the 'slope' logic above.
