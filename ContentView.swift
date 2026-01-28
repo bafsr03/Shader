@@ -7,38 +7,45 @@ struct ContentView: View {
     @State private var currentImageIndex = 0
     @State private var blendProgress: CGFloat = 0
     @State private var dragStartPosition: CGPoint = .zero
+    @State private var dragStartTime: Date = Date()
     
     // Images to transition between
     let images = ["image1", "image2"]
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                // Background color
-                Color.black.ignoresSafeArea()
+            TimelineView(.animation) { timeline in
+                let elapsedTime = isDragging ? timeline.date.timeIntervalSince(dragStartTime) : 0
                 
-                // Next image (underneath - will be revealed)
-                if isDragging || waveRadius > 0 {
-                    Image(images[(currentImageIndex + 1) % images.count])
+                ZStack {
+                    // Background color
+                    Color.black.ignoresSafeArea()
+                    
+                    // Next image (underneath - will be revealed)
+                    if isDragging || waveRadius > 0 {
+                        Image(images[(currentImageIndex + 1) % images.count])
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .clipped()
+                    }
+                    
+                    // Current image (on top - will be masked/faded by shader)
+                    Image(images[currentImageIndex])
                         .resizable()
                         .scaledToFill()
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
+                        .waveTransition(
+                            touchPosition: isDragging ? touchPosition : CGPoint(x: -1000, y: -1000),
+                            waveRadius: waveRadius,
+                            time: elapsedTime,
+                            amplitude: 12,
+                            frequency: 15,
+                            decay: 5,
+                            speed: 1000
+                        )
                 }
-                
-                // Current image (on top - will be masked/faded by shader)
-                Image(images[currentImageIndex])
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
-                    .waveTransition(
-                        touchPosition: isDragging ? touchPosition : CGPoint(x: -1000, y: -1000),
-                        waveRadius: waveRadius,
-                        waveIntensity: 0.15,
-                        blendProgress: blendProgress,
-                        waveFrequency: 0.15
-                    )
             }
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -48,6 +55,7 @@ struct ContentView: View {
                             dragStartPosition = value.location
                             touchPosition = value.location
                             waveRadius = 0
+                            dragStartTime = Date()
                         }
                         
                         // Update touch position

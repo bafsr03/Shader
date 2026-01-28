@@ -1,43 +1,59 @@
 #include <metal_stdlib>
+#include <SwiftUI/SwiftUI_Metal.h>
 using namespace metal;
 
-// Shader function for wave-based image blending
+// Enhanced wave transition with ripple effect
 [[ stitchable ]] half4 waveTransition(
     float2 position,
-    half4 currentColor,
+    SwiftUI::Layer layer,
     float2 touchPos,
     float waveRadius,
-    float waveIntensity,
-    float blendProgress,
-    float waveFrequency
+    float time,
+    float amplitude,
+    float frequency,
+    float decay,
+    float speed
 ) {
     // Calculate distance from touch point
-    float2 toTouch = position - touchPos;
-    float distance = length(toTouch);
+    float distance = length(position - touchPos);
     
-    // Create wave effect at the boundary
-    float wave = sin((distance - waveRadius) * waveFrequency) * waveIntensity;
+    // How long it takes for ripple to reach this pixel
+    float delay = distance / speed;
     
-    // Smooth transition boundary width
-    float edgeWidth = 30.0;
+    // Adjust time for delay
+    float localTime = time - delay;
+    localTime = max(0.0, localTime);
     
-    // Inside the wave radius = reveal new image (transparent/fade out current)
-    // Outside the wave radius = keep current image (opaque)
+    // Ripple effect: sine wave with exponential decay
+    float rippleAmount = amplitude * sin(frequency * localTime) * exp(-decay * localTime);
+    
+    // Direction vector from touch point
+    float2 direction = normalize(position - touchPos);
+    
+    // Calculate displaced position for sampling
+    float2 samplePosition = position + rippleAmount * direction;
+    
+    // Smooth edge for the reveal circle
+    float edgeWidth = 40.0;
     float alpha = smoothstep(waveRadius - edgeWidth, waveRadius + edgeWidth, distance);
     
-    // Add wave distortion at the edge
-    alpha += wave;
+    // Add ripple to the alpha mask
+    alpha += rippleAmount * 0.02;
     alpha = saturate(alpha);
     
-    // Apply brightness highlight at wave front
-    float highlight = exp(-abs(distance - waveRadius) / 15.0) * 0.4;
+    // Sample the layer at displaced position
+    half4 color = layer.sample(samplePosition);
     
-    // Create final color with alpha for revealing
-    half4 finalColor = currentColor;
-    finalColor.a *= half(alpha);
+    // Apply alpha mask (inside wave = transparent, outside = opaque)
+    color.a *= half(alpha);
     
-    // Add highlight at the wave edge
-    finalColor.rgb += half3(highlight * (1.0 - alpha));
+    // Add highlight at wave front (based on distance from wave edge)
+    float edgeDistance = abs(distance - waveRadius);
+    float highlight = exp(-edgeDistance / 20.0) * 0.5;
     
-    return finalColor;
+    // Brighten/darken based on ripple amount
+    color.rgb += half3(rippleAmount / amplitude * 0.3) * color.a;
+    color.rgb += half3(highlight) * (1.0 - alpha);
+    
+    return color;
 }

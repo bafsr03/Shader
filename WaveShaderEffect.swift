@@ -3,20 +3,25 @@ import SwiftUI
 struct WaveShaderEffect: ViewModifier {
     var touchPosition: CGPoint
     var waveRadius: CGFloat
-    var waveIntensity: CGFloat
-    var blendProgress: CGFloat
-    var waveFrequency: CGFloat
+    var time: TimeInterval
+    var amplitude: CGFloat
+    var frequency: CGFloat
+    var decay: CGFloat
+    var speed: CGFloat
     
     func body(content: Content) -> some View {
         content
-            .colorEffect(
+            .layerEffect(
                 ShaderLibrary.waveTransition(
                     .float2(touchPosition),
                     .float(waveRadius),
-                    .float(waveIntensity),
-                    .float(blendProgress),
-                    .float(waveFrequency)
-                )
+                    .float(time),
+                    .float(amplitude),
+                    .float(frequency),
+                    .float(decay),
+                    .float(speed)
+                ),
+                maxSampleOffset: CGSize(width: amplitude, height: amplitude)
             )
     }
 }
@@ -25,17 +30,21 @@ extension View {
     func waveTransition(
         touchPosition: CGPoint,
         waveRadius: CGFloat,
-        waveIntensity: CGFloat = 0.05,
-        blendProgress: CGFloat = 0.0,
-        waveFrequency: CGFloat = 0.1
+        time: TimeInterval = 0,
+        amplitude: CGFloat = 15,
+        frequency: CGFloat = 12,
+        decay: CGFloat = 6,
+        speed: CGFloat = 800
     ) -> some View {
         self.modifier(
             WaveShaderEffect(
                 touchPosition: touchPosition,
                 waveRadius: waveRadius,
-                waveIntensity: waveIntensity,
-                blendProgress: blendProgress,
-                waveFrequency: waveFrequency
+                time: time,
+                amplitude: amplitude,
+                frequency: frequency,
+                decay: decay,
+                speed: speed
             )
         )
     }
