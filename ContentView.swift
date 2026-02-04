@@ -22,7 +22,7 @@ struct ContentView: View {
     let images = ["image1", "image2"]
     
     // Ripple parameters
-    let rippleDuration: TimeInterval = 1.5
+    let rippleDuration: TimeInterval = 2.5 // Slower, smoother expansion
     let dragRippleSpacing = 8 // Add ripple every N points during drag
     
     var body: some View {
@@ -57,9 +57,9 @@ struct ContentView: View {
                                         let elapsed = currentTime.timeIntervalSince(ripple.startTime)
                                         let progress = min(elapsed / rippleDuration, 1.0)
                                         
-                                        // Calculate expanding radius
+                                        // Calculate expanding radius (smaller for localized effect)
                                         let maxRadius = sqrt(size.width * size.width + size.height * size.height)
-                                        let currentRadius = CGFloat(progress) * maxRadius * 1.2
+                                        let currentRadius = CGFloat(progress) * maxRadius * 0.25
                                         
                                         // Draw expanding circle
                                         let rect = CGRect(

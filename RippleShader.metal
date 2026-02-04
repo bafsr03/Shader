@@ -18,16 +18,16 @@ using namespace metal;
     // Normalize distance
     float normalizedDist = dist / maxRadius;
     
-    // Create ripple wave
+    // Create ripple wave (smaller amplitude for localized effect)
     float rippleFrequency = 20.0;
-    float rippleAmplitude = 8.0;
+    float rippleAmplitude = 3.0;
     
     // Wave travels outward with progress
     float wave = sin((normalizedDist - progress) * rippleFrequency);
     
-    // Fade out the effect at edges and based on progress
-    float fadeFactor = smoothstep(0.0, 0.1, progress) * smoothstep(1.0, 0.8, progress);
-    float distanceFade = smoothstep(progress * 1.4, progress * 1.2, normalizedDist);
+    // Fade out the effect at edges and based on progress (tighter fade for smaller, smoother ripples)
+    float fadeFactor = smoothstep(0.0, 0.15, progress) * smoothstep(1.0, 0.7, progress);
+    float distanceFade = smoothstep(progress * 0.3, progress * 0.25, normalizedDist);
     
     // Calculate distortion direction
     float2 direction = (position - tapLocation) / max(dist, 0.001);
