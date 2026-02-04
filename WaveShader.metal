@@ -60,9 +60,9 @@ float noise(float2 p) {
     float ripplePhase = waveDist * rippleFreq - time * rippleSpeed + noiseVal * 2.0;
     float rippleHeight = sin(ripplePhase);
     
+    
     // 4. Calculate Distortion
     // Calculate normal based on alpha gradient (downhill flow)
-    float2 pixelSize = float2(1.0, 1.0);
     float offset = 2.0;
     float alphaL = layer.sample(position - float2(offset, 0)).a;
     float alphaR = layer.sample(position + float2(offset, 0)).a;
@@ -80,34 +80,9 @@ float noise(float2 p) {
     
     half4 disColor = layer.sample(distortedPosition);
     
-    // 5. Specular Highlights
-    // Simple top-left lighting
-    float2 lightDir = normalize(float2(-1, -1));
-    
-    // Calculate normal perturbation from ripple
-    // slope = derivative of sin(phase) = cos(phase) * d(phase)/dx
-    // We approximated d(phase)/dx as just direction * freq, so slope ~ cos.
-    
-    float slope = cos(ripplePhase); 
-    
-    // Combine surface normal with ripple slope
-    // Ideally we would rotate the normal, but just adding slope to dot product approximation works well for fake water
-    float specular = max(0.0, dot(normal, lightDir) + slope * 0.5);
-    specular = pow(specular, 4.0);
-    
-    // 6. Final Alpha Composition
+    // Final Alpha Composition
     // We return the Expanded Alpha for the clipping mask, so the water appears wider than the brush
     disColor.a = expandedAlpha;
     
-    // Add specular glints
-    disColor.rgb += half3(specular * 0.6 * expandedAlpha);
-    
-    // Verify alpha pre-multiplication if needed, but usually .mask handles it.
-    // Since we are returning color from a .layerEffect, we are modifying the pixel.
-    // If we want to Expand the visible area, we need to modify Alpha.
-    
     return disColor;
 }
-
-// Helper to avoid undefined function in loop
-// We can just inline the 'slope' logic above.

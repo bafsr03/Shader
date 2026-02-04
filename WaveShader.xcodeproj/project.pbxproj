@@ -12,15 +12,17 @@
 		1A000005 /* WaveShaderEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000004 /* WaveShaderEffect.swift */; };
 		1A000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A000006 /* Assets.xcassets */; };
 		1A000009 /* WaveShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1A000008 /* WaveShader.metal */; };
+		472ACC3DEFD005129FBED76A /* RippleShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = E3577F3A409051CB08356D89 /* RippleShader.metal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		1A00000A /* WaveShader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WaveShader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A000000 /* ShaderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShaderApp.swift; sourceTree = "<group>"; };
 		1A000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		1A000004 /* WaveShaderEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveShaderEffect.swift; sourceTree = "<group>"; };
 		1A000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A000008 /* WaveShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = WaveShader.metal; sourceTree = "<group>"; };
+		1A00000A /* WaveShader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WaveShader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E3577F3A409051CB08356D89 /* RippleShader.metal */ = {isa = PBXFileReference; includeInIndex = 1; path = RippleShader.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -34,7 +36,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1A00000C /* WaveShader */ = {
+		1A00000C /* . */ = {
 			isa = PBXGroup;
 			children = (
 				1A000000 /* ShaderApp.swift */,
@@ -49,8 +51,9 @@
 		1A00000D = {
 			isa = PBXGroup;
 			children = (
-				1A00000C /* WaveShader */,
+				1A00000C /* . */,
 				1A00000E /* Products */,
+				E3577F3A409051CB08356D89 /* RippleShader.metal */,
 			);
 			sourceTree = "<group>";
 		};
@@ -135,6 +138,7 @@
 				1A000003 /* ContentView.swift in Sources */,
 				1A000005 /* WaveShaderEffect.swift in Sources */,
 				1A000009 /* WaveShader.metal in Sources */,
+				472ACC3DEFD005129FBED76A /* RippleShader.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
