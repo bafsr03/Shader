@@ -8,22 +8,27 @@ struct Ripple: Identifiable {
     var isDecayed: Bool = false
 }
 
+// MARK: - Permanent Reveal Circle
+struct RevealCircle: Identifiable {
+    let id = UUID()
+    let location: CGPoint
+    let radius: CGFloat
+}
 
 struct ContentView: View {
     @State private var ripples: [Ripple] = []
+    @State private var revealedCircles: [RevealCircle] = [] // Permanent revealed areas
     @State private var currentImageIndex = 0
     @State private var currentTime = Date()
-    @State private var revealProgress: CGFloat = 0.0
-    @State private var isFullyRevealed = false
     @State private var lastDragPoint: CGPoint?
-    @State private var dragPointCounter = 0
+    @State private var isTransitioning = false
     
     // Images to transition between
     let images = ["image1", "image2"]
     
     // Ripple parameters
     let rippleDuration: TimeInterval = 2.5 // Slower, smoother expansion
-    let dragRippleSpacing = 8 // Add ripple every N points during drag
+    let dragRippleSpacing = 15.0 // Add ripple every N pixels during drag
     
     var body: some View {
         GeometryReader { geometry in
@@ -37,8 +42,8 @@ struct ContentView: View {
                         .clipped()
                         .ignoresSafeArea()
                     
-                    // Next Image (revealed by ripples)
-                    if !isFullyRevealed {
+                    // Next Image (revealed by ripples) - only show if there are revealed areas
+                    if !revealedCircles.isEmpty || !ripples.isEmpty {
                         Image(images[(currentImageIndex + 1) % images.count])
                             .resizable()
                             .scaledToFill()
@@ -51,8 +56,24 @@ struct ContentView: View {
                                 size: geometry.size
                             )
                             .mask {
-                                // Create circular masks for each ripple
+                                // Create permanent masks for revealed areas
                                 Canvas { context, size in
+                                    // Draw all permanent revealed circles
+                                    for circle in revealedCircles {
+                                        let rect = CGRect(
+                                            x: circle.location.x - circle.radius,
+                                            y: circle.location.y - circle.radius,
+                                            width: circle.radius * 2,
+                                            height: circle.radius * 2
+                                        )
+                                        
+                                        context.fill(
+                                            Path(ellipseIn: rect),
+                                            with: .color(.white.opacity(0.95))
+                                        )
+                                    }
+                                    
+                                    // Draw active expanding ripples
                                     for ripple in ripples {
                                         let elapsed = currentTime.timeIntervalSince(ripple.startTime)
                                         let progress = min(elapsed / rippleDuration, 1.0)
@@ -69,9 +90,11 @@ struct ContentView: View {
                                             height: currentRadius * 2
                                         )
                                         
+                                        // More transparent while expanding
+                                        let opacity = 0.7 + (0.25 * progress)
                                         context.fill(
                                             Path(ellipseIn: rect),
-                                            with: .color(.white.opacity(1.0 - progress * 0.3))
+                                            with: .color(.white.opacity(opacity))
                                         )
                                     }
                                 }
@@ -81,10 +104,33 @@ struct ContentView: View {
                 }
             }
             .onChange(of: currentTime) { oldValue, newValue in
-                // Clean up decayed ripples
+                // Convert active ripples to permanent circles when they finish
+                let finishedRipples = ripples.filter { ripple in
+                    let elapsed = newValue.timeIntervalSince(ripple.startTime)
+                    return elapsed >= rippleDuration
+                }
+                
+                // Add finished ripples as permanent reveal circles
+                for ripple in finishedRipples {
+                    let maxRadius = sqrt(geometry.size.width * geometry.size.width + geometry.size.height * geometry.size.height)
+                    let finalRadius = maxRadius * 0.25
+                    
+                    let newCircle = RevealCircle(
+                        location: ripple.location,
+                        radius: finalRadius
+                    )
+                    revealedCircles.append(newCircle)
+                }
+                
+                // Remove finished ripples from active list
                 ripples.removeAll { ripple in
                     let elapsed = newValue.timeIntervalSince(ripple.startTime)
-                    return elapsed > rippleDuration
+                    return elapsed >= rippleDuration
+                }
+                
+                // Check if fully revealed
+                if !isTransitioning {
+                    checkIfFullyRevealed(size: geometry.size)
                 }
             }
             .task {
@@ -97,6 +143,8 @@ struct ContentView: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
+                        if isTransitioning { return }
+                        
                         // On drag, add ripples along the path (brush effect)
                         if let last = lastDragPoint {
                             let distance = hypot(
@@ -105,7 +153,7 @@ struct ContentView: View {
                             )
                             
                             // Add ripple every few pixels for brush effect
-                            if distance > 15 {
+                            if distance > dragRippleSpacing {
                                 addRipple(at: value.location)
                                 lastDragPoint = value.location
                             }
@@ -117,22 +165,13 @@ struct ContentView: View {
                     }
                     .onEnded { _ in
                         lastDragPoint = nil
-                        checkIfFullyRevealed(size: geometry.size)
                     }
             )
             .onTapGesture { location in
+                if isTransitioning { return }
+                
                 // Single tap = single ripple
-                if isFullyRevealed {
-                    // Reset for next image
-                    transitionToNextImage()
-                } else {
-                    addRipple(at: location)
-                    
-                    // Check after a delay if fully revealed
-                    DispatchQueue.main.asyncAfter(deadline: .now() + rippleDuration) {
-                        checkIfFullyRevealed(size: geometry.size)
-                    }
-                }
+                addRipple(at: location)
             }
         }
     }
@@ -143,30 +182,35 @@ struct ContentView: View {
     }
     
     private func checkIfFullyRevealed(size: CGSize) {
-        // Simple heuristic: if enough ripples have been created, consider it revealed
-        // More sophisticated: check coverage area
+        // Calculate total revealed area
         let totalArea = size.width * size.height
-        let maxRadius = sqrt(size.width * size.width + size.height * size.height) * 1.2
         
         var coveredArea: CGFloat = 0
-        for _ in ripples {
-            let radius = maxRadius // Assume fully expanded
-            coveredArea += .pi * radius * radius
+        for circle in revealedCircles {
+            coveredArea += .pi * circle.radius * circle.radius
         }
         
-        // Account for overlap (rough estimate)
-        let coverage = min(coveredArea / (totalArea * 2), 1.0)
+        // Account for overlap (rough estimate with 50% discount for overlap)
+        let estimatedCoverage = min(coveredArea / (totalArea * 1.5), 1.0)
         
-        if coverage > 0.8 {
-            isFullyRevealed = true
+        // If 70% or more is revealed, transition to next image
+        if estimatedCoverage > 0.7 {
+            transitionToNextImage()
         }
     }
     
     private func transitionToNextImage() {
-        withAnimation(.easeOut(duration: 0.3)) {
+        isTransitioning = true
+        
+        withAnimation(.easeOut(duration: 0.5)) {
             currentImageIndex = (currentImageIndex + 1) % images.count
             ripples.removeAll()
-            isFullyRevealed = false
+            revealedCircles.removeAll()
+        }
+        
+        // Reset transition flag after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            isTransitioning = false
         }
     }
 }
@@ -182,7 +226,7 @@ struct MultiRippleEffect: ViewModifier {
     var size: CGSize
     
     // Ripple parameters
-    let rippleDuration: TimeInterval = 1.5 // How long until fully decayed
+    let rippleDuration: TimeInterval = 2.5 // Match ContentView duration
     let rippleSpeed: Float = 2.0 // Expansion speed
     
     func body(content: Content) -> some View {
