@@ -165,7 +165,7 @@ struct ContentView: View {
                                 }
                             }
                             .padding(.trailing, 30) // Right spacing
-                            .padding(.bottom, 10)   // Moved much lower as requested
+                            .padding(.bottom, 30)   // Raised slightly as requested
                         }
                     }
                     .transition(.opacity.combined(with: .scale))
@@ -242,6 +242,7 @@ struct ContentView: View {
                 addRipple(at: location)
             }
         }
+        .ignoresSafeArea()
     }
     
     private func addRipple(at location: CGPoint) {

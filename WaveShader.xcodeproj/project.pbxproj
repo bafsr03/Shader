@@ -30,7 +30,7 @@
 		1A000004 /* WaveShaderEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveShaderEffect.swift; sourceTree = "<group>"; };
 		1A000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A000008 /* WaveShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = WaveShader.metal; sourceTree = "<group>"; };
-		1A00000A /* WaveShader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = WaveShader.app; path = 27.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A00000A /* 27.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = 27.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3510D11FE6E74C42995B7956 /* SongSelectionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SongSelectionView.swift; sourceTree = "<group>"; };
 		6F2994622F35A7A800E2774C /* song1.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = song1.mp3; sourceTree = "<group>"; };
 		6F2994642F35A9A700E2774C /* song2.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = song2.mp3; sourceTree = "<group>"; };
@@ -87,7 +87,7 @@
 		1A00000E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				1A00000A /* WaveShader.app */,
+				1A00000A /* 27.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -109,7 +109,7 @@
 			);
 			name = WaveShader;
 			productName = WaveShader;
-			productReference = 1A00000A /* WaveShader.app */;
+			productReference = 1A00000A /* 27.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -307,7 +307,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4WQ793Y8J6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = 27;
@@ -337,7 +337,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4WQ793Y8J6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = 27;

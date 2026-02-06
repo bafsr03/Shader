@@ -41,7 +41,7 @@ struct SongSelectionView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 60)
                 
                 Spacer()
                 Spacer()
