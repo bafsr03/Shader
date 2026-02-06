@@ -16,6 +16,9 @@ struct RevealCircle: Identifiable {
 }
 
 struct ContentView: View {
+    let audioManager: AudioManager
+    let onBackToSongSelection: () -> Void
+    
     @State private var ripples: [Ripple] = []
     @State private var revealedCircles: [RevealCircle] = [] // Permanent revealed areas
     @State private var currentImageIndex = 0
@@ -24,8 +27,8 @@ struct ContentView: View {
     @State private var isTransitioning = false
     @State private var transitionOpacity: Double = 1.0 // For smooth fade transitions
     
-    // Images to transition between
-    let images = ["image1", "image2"]
+    // 16 Images for dedication slides
+    let images = (1...16).map { "slide\($0)" }
     
     // Ripple parameters
     let rippleDuration: TimeInterval = 2.5 // Slower, smoother expansion
@@ -36,21 +39,54 @@ struct ContentView: View {
             TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { (timeline: TimelineViewDefaultContext) in
                 ZStack {
                     // Current Image (base layer)
-                    Image(images[currentImageIndex])
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
-                        .ignoresSafeArea()
-                    
-                    // Next Image (revealed by ripples) - only show if there are revealed areas
-                    if !revealedCircles.isEmpty || !ripples.isEmpty {
-                        Image(images[(currentImageIndex + 1) % images.count])
+                    let currentImageName = images[currentImageIndex]
+                    if let uiImage = loadSmartImage(named: currentImageName) {
+                        Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFill()
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .clipped()
                             .ignoresSafeArea()
+                    } else {
+                        // Fallback if image is missing
+                        ZStack {
+                            Color.black.ignoresSafeArea()
+                            VStack(spacing: 10) {
+                                Image(systemName: "photo.badge.exclamationmark")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.orange)
+                                Text("Missing Image")
+                                    .font(.title2.bold())
+                                    .foregroundColor(.white)
+                                Text("'\(currentImageName)'")
+                                    .font(.title3.monospaced())
+                                    .foregroundColor(.gray)
+                                Text("Try naming it exactly 'slide\(currentImageIndex + 1)'")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    
+                    // Next Image (revealed by ripples) - only show if there are revealed areas
+                    if !revealedCircles.isEmpty || !ripples.isEmpty {
+                        Group {
+                            let nextIndex = (currentImageIndex + 1)
+                            // Only show next image if we are not at the end
+                             if nextIndex < images.count {
+                                let nextImageName = images[nextIndex]
+                                if let nextUiImage = loadSmartImage(named: nextImageName) {
+                                    Image(uiImage: nextUiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: geometry.size.width, height: geometry.size.height)
+                                        .clipped()
+                                        .ignoresSafeArea()
+                                } else {
+                                    Color.black
+                                }
+                            }
+                        }
                             .multiRippleEffect(
                                 ripples: ripples,
                                 currentTime: currentTime,
@@ -104,6 +140,35 @@ struct ContentView: View {
                             .waveTransition(time: currentTime.timeIntervalSince1970, speed: 2.0)
                             .opacity(transitionOpacity) // Smooth fade during transition
                     }
+                    
+                    // Navigation Button (always visible for Back or Music)
+                    VStack {
+                        Spacer()
+                        
+                        HStack {
+                            Spacer() // Push to right
+                            
+                            Button(action: goBackOneSlide) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: currentImageIndex == 0 ? "music.note" : "chevron.left")
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text(currentImageIndex == 0 ? "Music" : "Back")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                .background {
+                                    Capsule()
+                                        .fill(.ultraThinMaterial)
+                                        .shadow(color: .black.opacity(0.3), radius: 10, y: 5)
+                                }
+                            }
+                            .padding(.trailing, 30) // Right spacing
+                            .padding(.bottom, 10)   // Moved much lower as requested
+                        }
+                    }
+                    .transition(.opacity.combined(with: .scale))
                 }
             }
             .onChange(of: currentTime) { oldValue, newValue in
@@ -196,18 +261,27 @@ struct ContentView: View {
         // Account for overlap (rough estimate with 50% discount for overlap)
         let estimatedCoverage = min(coveredArea / (totalArea * 1.5), 1.0)
         
-        // Require 90% coverage to ensure nearly complete reveal
+        // Require 99% coverage to ensure nearly complete reveal
         if estimatedCoverage > 0.99 {
             transitionToNextImage()
         }
     }
     
     private func transitionToNextImage() {
+        // Don't transition if we're on the last slide
+        if currentImageIndex >= images.count - 1 {
+            // On last slide - just clear the reveal for now
+            ripples.removeAll()
+            revealedCircles.removeAll()
+            transitionOpacity = 1.0
+            return
+        }
+        
         isTransitioning = true
         
         // When coverage is complete, the revealed layer already shows the full next image
         // Just instantly switch the base layer and clear reveals for seamless transition
-        currentImageIndex = (currentImageIndex + 1) % images.count
+        currentImageIndex += 1
         ripples.removeAll()
         revealedCircles.removeAll()
         
@@ -219,10 +293,48 @@ struct ContentView: View {
             isTransitioning = false
         }
     }
+    
+    private func goBackOneSlide() {
+        if currentImageIndex == 0 {
+            // First slide -> Go back to Song Selection
+            onBackToSongSelection()
+        } else {
+            // Later slides -> Go back one slide
+            withAnimation(.easeInOut(duration: 0.3)) {
+                currentImageIndex -= 1
+                ripples.removeAll()
+                revealedCircles.removeAll()
+                transitionOpacity = 1.0
+            }
+        }
+    }
 }
 
 #Preview {
-    ContentView()
+    ContentView(audioManager: AudioManager(), onBackToSongSelection: {})
+}
+
+// MARK: - Helper Functions
+private func loadSmartImage(named name: String) -> UIImage? {
+    // 1. Try exact match
+    if let image = UIImage(named: name) { return image }
+    
+    // 2. Try capitalized "SlideX"
+    let capitalized = name.prefix(1).capitalized + name.dropFirst()
+    if let image = UIImage(named: capitalized) { return image }
+    
+    // 3. Try with space "slide X"
+    if name.hasPrefix("slide") {
+        let number = name.dropFirst(5)
+        let spaceName = "slide \(number)"
+        if let image = UIImage(named: spaceName) { return image }
+        
+        // 4. Try capitalized with space "Slide X"
+        let capSpaceName = "Slide \(number)"
+        if let image = UIImage(named: capSpaceName) { return image }
+    }
+    
+    return nil
 }
 
 // MARK: - Multi-Ripple Shader Effect

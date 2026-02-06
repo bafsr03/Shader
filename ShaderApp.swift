@@ -4,7 +4,7 @@ import SwiftUI
 struct ShaderApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            DedicationApp()
         }
     }
 }
