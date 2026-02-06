@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var currentTime = Date()
     @State private var lastDragPoint: CGPoint?
     @State private var isTransitioning = false
+    @State private var transitionOpacity: Double = 1.0 // For smooth fade transitions
     
     // Images to transition between
     let images = ["image1", "image2"]
@@ -100,6 +101,7 @@ struct ContentView: View {
                                 }
                             }
                             .waveTransition(time: currentTime.timeIntervalSince1970, speed: 2.0)
+                            .opacity(transitionOpacity) // Smooth fade during transition
                     }
                 }
             }
@@ -193,8 +195,8 @@ struct ContentView: View {
         // Account for overlap (rough estimate with 50% discount for overlap)
         let estimatedCoverage = min(coveredArea / (totalArea * 1.5), 1.0)
         
-        // If 70% or more is revealed, transition to next image
-        if estimatedCoverage > 0.7 {
+        // Require 90% coverage to ensure nearly complete reveal
+        if estimatedCoverage > 0.99 {
             transitionToNextImage()
         }
     }
@@ -202,14 +204,17 @@ struct ContentView: View {
     private func transitionToNextImage() {
         isTransitioning = true
         
-        withAnimation(.easeOut(duration: 0.5)) {
-            currentImageIndex = (currentImageIndex + 1) % images.count
-            ripples.removeAll()
-            revealedCircles.removeAll()
-        }
+        // When coverage is complete, the revealed layer already shows the full next image
+        // Just instantly switch the base layer and clear reveals for seamless transition
+        currentImageIndex = (currentImageIndex + 1) % images.count
+        ripples.removeAll()
+        revealedCircles.removeAll()
         
-        // Reset transition flag after animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        // Ensure opacity is back to 1.0 for next reveal cycle
+        transitionOpacity = 1.0
+        
+        // Brief delay before allowing new interactions
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             isTransitioning = false
         }
     }
