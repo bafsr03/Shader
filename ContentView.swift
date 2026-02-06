@@ -57,7 +57,7 @@ struct ContentView: View {
                                 size: geometry.size
                             )
                             .mask {
-                                // Create permanent masks for revealed areas
+                                // Create permanent masks for revealed areas with soft edges
                                 Canvas { context, size in
                                     // Draw all permanent revealed circles
                                     for circle in revealedCircles {
@@ -70,7 +70,7 @@ struct ContentView: View {
                                         
                                         context.fill(
                                             Path(ellipseIn: rect),
-                                            with: .color(.white.opacity(0.95))
+                                            with: .color(.white)
                                         )
                                     }
                                     
@@ -91,14 +91,15 @@ struct ContentView: View {
                                             height: currentRadius * 2
                                         )
                                         
-                                        // More transparent while expanding
-                                        let opacity = 0.7 + (0.25 * progress)
+                                        // Fade in while expanding
+                                        let opacity = 0.8 + (0.2 * progress)
                                         context.fill(
                                             Path(ellipseIn: rect),
                                             with: .color(.white.opacity(opacity))
                                         )
                                     }
                                 }
+                                .blur(radius: 15) // Soften all edges for smooth blending
                             }
                             .waveTransition(time: currentTime.timeIntervalSince1970, speed: 2.0)
                             .opacity(transitionOpacity) // Smooth fade during transition
