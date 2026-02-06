@@ -29,6 +29,7 @@ struct SongSelectionView: View {
                         .font(.system(size: 32, weight: .light, design: .serif))
                         .foregroundColor(deepBlue)
                         .tracking(2)
+                        .padding(.horizontal, 40)
                 }
                 
                 // Minimalistic song buttons
